@@ -299,7 +299,6 @@ class PDFHandCatcherWorkflow {
     const args = [
       `--user-data-dir=${this.isolatedProfileDir}`,
       `--remote-debugging-port=${this.edgeDebugPort}`,
-      "--inprivate",
       "--no-first-run",
       "--no-default-browser-check",
       "--disable-extensions",
@@ -340,7 +339,7 @@ class PDFHandCatcherWorkflow {
 
     // 2. Open new tab in existing Edge instance
     try {
-      launchProcess(edgePath, [`--user-data-dir=${this.isolatedProfileDir}`, "--inprivate", url]);
+      launchProcess(edgePath, [`--user-data-dir=${this.isolatedProfileDir}`, url]);
       debug("opened tab in existing Edge", url);
     } catch (error) {
       debug("reuseEdge failed", error instanceof Error ? error.message : String(error));
