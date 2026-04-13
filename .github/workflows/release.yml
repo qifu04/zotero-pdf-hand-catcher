@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npm run build
+
+      # 1. Create versioned release (v0.1.0) with XPI + release notes
+      - name: Create release with XPI
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/*.xpi
+          generate_release_notes: true
+
+      # 2. Update the permanent "release" tag with latest update.json
+      #    Zotero checks this fixed URL for auto-updates
+      - name: Update release tag with update.json
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: release
+          name: "Auto-Update Manifest"
+          body: |
+            This release only contains `update.json` for Zotero's auto-update mechanism.
+            Do not install from here — use the [latest versioned release](../../releases/latest) instead.
+          files: |
+            build/update.json
+            build/update-beta.json
