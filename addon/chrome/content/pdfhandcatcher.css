@@ -1,0 +1,85 @@
+#pdfhandcatcher-workflow-root { padding: 6px; }
+
+.phc-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.phc-row-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.phc-pos {
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.phc-bar {
+  flex: 1;
+  height: 6px;
+  min-width: 40px;
+}
+
+.phc-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+  opacity: 0.95;
+}
+
+.phc-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: 4px;
+  padding: 2px 7px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.phc-btn:hover:not(:disabled) {
+  background: var(--fill-quinary, rgba(0, 0, 0, 0.06));
+}
+
+.phc-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.phc-btn-sm {
+  padding: 1px 5px;
+  font-size: 10px;
+}
+
+.phc-hint {
+  font-size: 11px;
+  opacity: 0.68;
+  line-height: 1.25;
+}
+
+.phc-actions-bottom {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.phc-btn-bottom {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding: 6px 0;
+  font-size: 12px;
+}

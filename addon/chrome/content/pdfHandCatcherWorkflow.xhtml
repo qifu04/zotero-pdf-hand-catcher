@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<?xml-stylesheet href="chrome://pdfhandcatcher/content/pdfhandcatcher.css" type="text/css"?>
+
+<window
+  id="pdfhandcatcher-workflow-window"
+  windowtype="pdfhandcatcher:workflow"
+  orient="vertical"
+  width="300"
+  height="118"
+  persist="screenX screenY width height"
+  xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+>
+  <script type="application/javascript"><![CDATA[
+    var controller = null;
+    window.addEventListener("load", () => {
+      let io = window.arguments && window.arguments[0];
+      controller = io && (io.wrappedJSObject || io).controller;
+      controller && controller.onWorkflowWindowLoad(window);
+    });
+    window.addEventListener("unload", () => {
+      controller && controller.onWorkflowWindowUnload(window);
+    });
+  ]]></script>
+
+  <vbox id="pdfhandcatcher-workflow-root" flex="1">
+    <html:div class="phc-panel">
+      <html:div class="phc-row-top">
+        <html:span id="pdfhandcatcher-progress-title" class="phc-pos"></html:span>
+        <html:progress id="pdfhandcatcher-progress-bar" class="phc-bar" max="1" value="0"></html:progress>
+      </html:div>
+      <html:div id="pdfhandcatcher-item-title-value" class="phc-title"></html:div>
+      <html:div id="pdfhandcatcher-workflow-hint" class="phc-hint"></html:div>
+      <html:div class="phc-actions-bottom">
+        <html:button id="pdfhandcatcher-skip" class="phc-btn phc-btn-bottom"></html:button>
+        <html:button id="pdfhandcatcher-close" class="phc-btn phc-btn-bottom"></html:button>
+      </html:div>
+    </html:div>
+  </vbox>
+</window>

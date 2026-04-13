@@ -1,0 +1,17 @@
+.env
+node_modules/
+build/
+dist/
+*.xpi
+.scaffold/
+downloads/
+browser-profile/
+logs/
+.playwright-mcp/
+tmp-*/
+playwright-*.json
+playwright-*.md
+playwright-*.txt
+pdf-viewer-*.md
+pdf-viewer-*.txt
+ieee-*.png
