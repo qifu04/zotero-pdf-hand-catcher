@@ -2,7 +2,6 @@ import { config } from "../../package.json";
 import { getString } from "../utils/locale";
 import {
   attachPdfToItem,
-  copyFile,
   countPdfAttachments,
   currentViewFilesEditable,
   debug,
@@ -11,7 +10,6 @@ import {
   findEdgePath,
   getBestSourceURL,
   getDownloadDir,
-  getLocalAppDataPath,
   getTempDir,
   getVisibleRegularItems,
   hasActiveView,
@@ -297,13 +295,11 @@ class PDFHandCatcherWorkflow {
 
   private async launchEdge(edgePath: string, url: string) {
     ensureDir(this.isolatedProfileDir);
-    this.clearEdgeSessionState();
-    this.copyRealEdgeCookies();
-    await this.seedIsolatedEdgePreferences();
 
     const args = [
       `--user-data-dir=${this.isolatedProfileDir}`,
       `--remote-debugging-port=${this.edgeDebugPort}`,
+      "--inprivate",
       "--no-first-run",
       "--no-default-browser-check",
       "--disable-extensions",
@@ -373,77 +369,6 @@ class PDFHandCatcherWorkflow {
     this.edgeLaunched = false;
   }
 
-  private clearEdgeSessionState() {
-    if (!this.isolatedProfileDir) {
-      return;
-    }
-    // Delete Preferences and Secure Preferences so Edge won't detect
-    // a "crashed" exit_type and show the restore bubble.
-    const filesToRemove = [
-      `${this.isolatedProfileDir}\\Default\\Preferences`,
-      `${this.isolatedProfileDir}\\Default\\Secure Preferences`,
-    ];
-    for (const path of filesToRemove) {
-      try {
-        const file = Zotero.File.pathToFile(path);
-        if (file.exists()) {
-          file.remove(false);
-        }
-      } catch {}
-    }
-  }
-
-  private copyRealEdgeCookies() {
-    if (!this.isolatedProfileDir) {
-      return;
-    }
-    try {
-      const realUserData = `${getLocalAppDataPath()}\\Microsoft\\Edge\\User Data`;
-      const dstDefault = `${this.isolatedProfileDir}\\Default`;
-      const dstNetwork = `${dstDefault}\\Network`;
-      ensureDir(dstDefault);
-      ensureDir(dstNetwork);
-
-      // Copy Local State (contains encryption key for cookies)
-      copyFile(`${realUserData}\\Local State`, `${this.isolatedProfileDir}\\Local State`);
-      // Copy Cookies database (institutional auth sessions)
-      copyFile(`${realUserData}\\Default\\Network\\Cookies`, `${dstNetwork}\\Cookies`);
-      copyFile(`${realUserData}\\Default\\Network\\Cookies-journal`, `${dstNetwork}\\Cookies-journal`);
-
-      debug("copied Edge cookies to isolated profile");
-    } catch (error) {
-      debug("copyRealEdgeCookies failed", error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  private async seedIsolatedEdgePreferences() {
-    if (!this.isolatedProfileDir) {
-      return;
-    }
-
-    try {
-      const defaultDir = `${this.isolatedProfileDir}\\Default`;
-      const preferencesPath = `${defaultDir}\\Preferences`;
-      ensureDir(defaultDir);
-
-      const preferences = {
-        browser: {
-          has_seen_welcome_page: true,
-        },
-        exited_cleanly: true,
-        exit_type: "Normal",
-        translate: {
-          enabled: false,
-        },
-        translate_site_blacklist: ["*"],
-      };
-
-      await Zotero.File.putContentsAsync(preferencesPath, JSON.stringify(preferences));
-      debug("seeded isolated Edge preferences");
-    } catch (error) {
-      debug("seedIsolatedEdgePreferences failed", error instanceof Error ? error.message : String(error));
-    }
-  }
 
   // ─── Item progression ───
 
