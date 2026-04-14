@@ -469,6 +469,10 @@ class PDFHandCatcherWorkflow {
         browser: { has_seen_welcome_page: true },
         exited_cleanly: true,
         exit_type: "Normal",
+        profile: {
+          block_third_party_cookies: false,
+          cookie_controls_mode: 0,
+        },
         translate: { enabled: false },
         translate_site_blacklist: ["*"],
       };
