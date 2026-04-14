@@ -299,11 +299,11 @@ class PDFHandCatcherWorkflow {
   private async launchEdge(edgePath: string, url: string) {
     ensureDir(this.isolatedProfileDir);
     this.copyRealEdgeCookies();
+    await this.seedIsolatedEdgePreferences();
 
     const args = [
       `--user-data-dir=${this.isolatedProfileDir}`,
       `--remote-debugging-port=${this.edgeDebugPort}`,
-      "--disable-blink-features=AutomationControlled",
       "--no-first-run",
       "--no-default-browser-check",
       "--disable-sync",
@@ -317,10 +317,56 @@ class PDFHandCatcherWorkflow {
       this.edgeProcess = launchProcess(edgePath, args);
       this.edgeLaunched = true;
       debug("launched isolated Edge", url);
+      // Wait briefly for CDP to become available, then hide webdriver signal
+      const win = this.workflowWindow ?? this.ownerWindow ?? Zotero.getMainWindow();
+      win.setTimeout(() => void this.injectAntiDetection(), 1500);
     } catch (error) {
       debug("Edge launch failed", error instanceof Error ? error.message : String(error));
       Zotero.launchURL(url);
     }
+  }
+
+  /**
+   * Use CDP to add a script that runs before each page load,
+   * overriding navigator.webdriver to false.
+   */
+  private async injectAntiDetection() {
+    const base = `http://127.0.0.1:${this.edgeDebugPort}`;
+    try {
+      const resp = await fetch(`${base}/json`);
+      if (!resp.ok) return;
+      const tabs = (await resp.json()) as unknown as Array<{ id: string; webSocketDebuggerUrl: string; type: string }>;
+      for (const tab of tabs) {
+        if (tab.type !== "page" || !tab.webSocketDebuggerUrl) continue;
+        await this.cdpSendOverWebSocket(tab.webSocketDebuggerUrl, "Page.addScriptToEvaluateOnNewDocument", {
+          source: "Object.defineProperty(navigator, 'webdriver', { get: () => false });",
+        });
+      }
+      debug("CDP: injected anti-detection script");
+    } catch (error) {
+      debug("injectAntiDetection failed", error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  private cdpSendOverWebSocket(wsUrl: string, method: string, params: Record<string, unknown>): Promise<void> {
+    return new Promise((resolve) => {
+      try {
+        const ws = new WebSocket(wsUrl);
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ id: 1, method, params }));
+        };
+        ws.onmessage = () => {
+          ws.close();
+          resolve();
+        };
+        ws.onerror = () => resolve();
+        // Timeout safety
+        const win = this.workflowWindow ?? this.ownerWindow ?? Zotero.getMainWindow();
+        win.setTimeout(() => { try { ws.close(); } catch {} resolve(); }, 3000);
+      } catch {
+        resolve();
+      }
+    });
   }
 
   /** Snapshot old tab IDs → open new tab → close old tabs by their IDs. */
@@ -351,19 +397,33 @@ class PDFHandCatcherWorkflow {
       return;
     }
 
-    // 3. After delay, close only the OLD tabs (by saved IDs)
-    if (oldTabIds.size > 0) {
-      const win = this.workflowWindow;
-      if (win && !win.closed) {
-        win.setTimeout(() => {
-          for (const id of oldTabIds) {
-            fetch(`${base}/json/close/${id}`).catch(() => {});
-          }
-          debug("CDP: closed old tabs", oldTabIds.size);
-        }, 2000);
-      }
+    // 3. After delay, close old tabs and inject anti-detection on new tab
+    const win = this.workflowWindow;
+    if (win && !win.closed) {
+      win.setTimeout(() => {
+        for (const id of oldTabIds) {
+          fetch(`${base}/json/close/${id}`).catch(() => {});
+        }
+        if (oldTabIds.size > 0) debug("CDP: closed old tabs", oldTabIds.size);
+        void this.injectAntiDetectionOnNewTabs(oldTabIds);
+      }, 2000);
     }
 
+  }
+
+  private async injectAntiDetectionOnNewTabs(excludeIds: Set<string>) {
+    const base = `http://127.0.0.1:${this.edgeDebugPort}`;
+    try {
+      const resp = await fetch(`${base}/json`);
+      if (!resp.ok) return;
+      const tabs = (await resp.json()) as unknown as Array<{ id: string; webSocketDebuggerUrl: string; type: string }>;
+      for (const tab of tabs) {
+        if (tab.type !== "page" || excludeIds.has(tab.id) || !tab.webSocketDebuggerUrl) continue;
+        await this.cdpSendOverWebSocket(tab.webSocketDebuggerUrl, "Page.addScriptToEvaluateOnNewDocument", {
+          source: "Object.defineProperty(navigator, 'webdriver', { get: () => false });",
+        });
+      }
+    } catch {}
   }
 
   private closeEdge() {
@@ -393,6 +453,38 @@ class PDFHandCatcherWorkflow {
       debug("copied Edge cookies (CF stripped) to isolated profile");
     } catch (error) {
       debug("copyRealEdgeCookies failed", error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  private async seedIsolatedEdgePreferences() {
+    if (!this.isolatedProfileDir) {
+      return;
+    }
+    try {
+      const defaultDir = `${this.isolatedProfileDir}\\Default`;
+      const preferencesPath = `${defaultDir}\\Preferences`;
+      ensureDir(defaultDir);
+
+      const preferences = {
+        browser: { has_seen_welcome_page: true },
+        exited_cleanly: true,
+        exit_type: "Normal",
+        translate: { enabled: false },
+        translate_site_blacklist: ["*"],
+      };
+
+      await Zotero.File.putContentsAsync(preferencesPath, JSON.stringify(preferences));
+
+      // Disable command-line flag security warnings via Edge policy
+      const policyDir = `${this.isolatedProfileDir}\\Edge Policies`;
+      ensureDir(policyDir);
+      const policyPath = `${policyDir}\\policies.json`;
+      const policy = { CommandLineFlagSecurityWarningsEnabled: false };
+      await Zotero.File.putContentsAsync(policyPath, JSON.stringify(policy));
+
+      debug("seeded isolated Edge preferences and policies");
+    } catch (error) {
+      debug("seedIsolatedEdgePreferences failed", error instanceof Error ? error.message : String(error));
     }
   }
 
