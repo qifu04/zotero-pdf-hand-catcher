@@ -182,6 +182,29 @@ export function getLocalAppDataPath() {
   return String(Services.dirsvc.get("LocalAppData", Components.interfaces.nsIFile).path);
 }
 
+export function stripCloudflareCookies(cookiesDbPath: string) {
+  const file = pathToFile(cookiesDbPath);
+  if (!file.exists() || !file.isFile()) {
+    return;
+  }
+
+  let db: any;
+  try {
+    const storageService = Cc["@mozilla.org/storage/service;1"].getService(Ci.mozIStorageService);
+    db = storageService.openDatabase(file);
+    db.executeSimpleSQL(
+      `DELETE FROM cookies WHERE name IN ('cf_clearance','__cf_bm','__cflb','_cfuvid') OR name LIKE 'cf_chl_%' OR host_key LIKE '%.cloudflare.com'`,
+    );
+    debug("stripped Cloudflare cookies from isolated profile");
+  } catch (error) {
+    debug("stripCloudflareCookies failed", error instanceof Error ? error.message : String(error));
+  } finally {
+    try {
+      db?.close();
+    } catch {}
+  }
+}
+
 // --------------- Internal ---------------
 
 function isPdfAttachment(item: Zotero.Item) {

@@ -2,6 +2,7 @@ import { config } from "../../package.json";
 import { getString } from "../utils/locale";
 import {
   attachPdfToItem,
+  copyFile,
   countPdfAttachments,
   currentViewFilesEditable,
   debug,
@@ -10,12 +11,14 @@ import {
   findEdgePath,
   getBestSourceURL,
   getDownloadDir,
+  getLocalAppDataPath,
   getTempDir,
   getVisibleRegularItems,
   hasActiveView,
   killProcess,
   launchProcess,
   showAlert,
+  stripCloudflareCookies,
 } from "../utils/zotero";
 
 const TOOLBAR_BUTTON_ID = `${config.addonRef}-tb-scan-current-view`;
@@ -295,13 +298,14 @@ class PDFHandCatcherWorkflow {
 
   private async launchEdge(edgePath: string, url: string) {
     ensureDir(this.isolatedProfileDir);
+    this.copyRealEdgeCookies();
 
     const args = [
       `--user-data-dir=${this.isolatedProfileDir}`,
       `--remote-debugging-port=${this.edgeDebugPort}`,
+      "--disable-blink-features=AutomationControlled",
       "--no-first-run",
       "--no-default-browser-check",
-      "--disable-extensions",
       "--disable-sync",
       "--enable-features=ParallelDownloading",
       "--disable-features=msEdgeDefaultBrowserInterstitial,msEdgeSidebarV2,Translate,TranslateUI,msTranslate",
@@ -368,6 +372,29 @@ class PDFHandCatcherWorkflow {
     this.edgeLaunched = false;
   }
 
+  private copyRealEdgeCookies() {
+    if (!this.isolatedProfileDir) {
+      return;
+    }
+    try {
+      const realUserData = `${getLocalAppDataPath()}\\Microsoft\\Edge\\User Data`;
+      const dstDefault = `${this.isolatedProfileDir}\\Default`;
+      const dstNetwork = `${dstDefault}\\Network`;
+      ensureDir(dstDefault);
+      ensureDir(dstNetwork);
+
+      copyFile(`${realUserData}\\Local State`, `${this.isolatedProfileDir}\\Local State`);
+      copyFile(`${realUserData}\\Default\\Network\\Cookies`, `${dstNetwork}\\Cookies`);
+      copyFile(`${realUserData}\\Default\\Network\\Cookies-journal`, `${dstNetwork}\\Cookies-journal`);
+
+      // Strip Cloudflare cookies to avoid fingerprint mismatch detection
+      stripCloudflareCookies(`${dstNetwork}\\Cookies`);
+
+      debug("copied Edge cookies (CF stripped) to isolated profile");
+    } catch (error) {
+      debug("copyRealEdgeCookies failed", error instanceof Error ? error.message : String(error));
+    }
+  }
 
   // ─── Item progression ───
 
