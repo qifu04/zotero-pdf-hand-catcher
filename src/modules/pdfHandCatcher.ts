@@ -204,7 +204,7 @@ class PDFHandCatcherWorkflow {
     this.workflowWindow = ownerWin.openDialog(
       WORKFLOW_WINDOW_URL,
       WORKFLOW_WINDOW_NAME,
-      "chrome,dialog=no,resizable,centerscreen,width=300,height=118",
+      "chrome,dialog=no,resizable,centerscreen,width=300,height=118,alwaysontop=yes",
       io,
     ) as WorkflowWindow;
 
