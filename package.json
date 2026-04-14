@@ -1,6 +1,6 @@
 {
   "name": "zotero-pdf-hand-catcher",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "A Zotero plugin that finds items without PDFs, opens each in an isolated Edge browser, and auto-captures downloads back into Zotero.",
   "type": "module",
   "keywords": [
