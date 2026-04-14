@@ -192,10 +192,8 @@ export function stripCloudflareCookies(cookiesDbPath: string) {
   try {
     const storageService = Cc["@mozilla.org/storage/service;1"].getService(Ci.mozIStorageService);
     db = storageService.openDatabase(file);
-    db.executeSimpleSQL(
-      `DELETE FROM cookies WHERE name IN ('cf_clearance','__cf_bm','__cflb','_cfuvid') OR name LIKE 'cf_chl_%' OR host_key LIKE '%.cloudflare.com'`,
-    );
-    debug("stripped Cloudflare cookies from isolated profile");
+    db.executeSimpleSQL(`DELETE FROM cookies WHERE name = 'cf_clearance'`);
+    debug("stripped cf_clearance cookies from isolated profile");
   } catch (error) {
     debug("stripCloudflareCookies failed", error instanceof Error ? error.message : String(error));
   } finally {
