@@ -373,8 +373,8 @@ class PDFHandCatcherWorkflow {
   private async reuseEdge(edgePath: string, url: string) {
     const base = `http://127.0.0.1:${this.edgeDebugPort}`;
 
-    // 1. Snapshot current tab IDs (these are the OLD tabs to close later)
-    const oldTabIds = new Set<string>();
+    // 1. Check if Edge is still alive via CDP; if not, do a full relaunch
+    let oldTabIds = new Set<string>();
     try {
       const resp = await fetch(`${base}/json`);
       if (resp.ok) {
@@ -385,7 +385,14 @@ class PDFHandCatcherWorkflow {
           }
         }
       }
-    } catch {}
+    } catch {
+      // CDP unreachable — Edge was closed by user, do a full relaunch
+      debug("CDP unreachable, Edge was closed — relaunching");
+      this.edgeLaunched = false;
+      this.edgeProcess = null;
+      await this.launchEdge(edgePath, url);
+      return;
+    }
 
     // 2. Open new tab in existing Edge instance
     try {
